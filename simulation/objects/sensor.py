@@ -1,0 +1,1 @@
+# 定义 Sensor (参考 Reference sensor.py)

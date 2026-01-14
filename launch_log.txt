@@ -1,0 +1,50 @@
+>>> 启动时间: 2026年 01月 13日 星期二 16:32:47 CST
+>>> 工作目录: /home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen
+>>> 正在激活 Carla_3.8 环境...
+>>> 正在搜索 Python 3.x 版本的 CARLA 库...
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86_64.egg
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+>>> 启动 GUI...
+Traceback (most recent call last):
+  File "launch_gui.py", line 4, in <module>
+    from gui.app_window import MainWindow
+  File "/home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen/gui/app_window.py", line 310, in <module>
+    from .worker import CarlaWorker
+  File "/home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen/gui/worker.py", line 7, in <module>
+    import carla
+  File "<frozen zipimport>", line 259, in load_module
+  File "/home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86_64.egg/carla/__init__.py", line 8, in <module>
+  File "<frozen zipimport>", line 259, in load_module
+  File "/home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86_64.egg/carla/libcarla.py", line 9, in <module>
+  File "/home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.10-linux-x86_64.egg/carla/libcarla.py", line 7, in __bootstrap__
+ImportError: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /home/zxw/.cache/Python-Eggs/carla-0.9.15-py3.10-linux-x86_64.egg-tmp/carla/libcarla.cpython-310-x86_64-linux-gnu.so)
+!!! 程序崩溃 !!!
+请检查上方报错信息。
+>>> 启动时间: 2026年 01月 13日 星期二 16:35:30 CST
+>>> 工作目录: /home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen
+>>> 正在激活 Carla_3.8 环境...
+>>> 正在搜索 Python 3.x 版本的 CARLA 库...
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+>>> 启动 GUI...
+>>> 启动时间: 2026年 01月 13日 星期二 16:36:04 CST
+>>> 工作目录: /home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen
+>>> 正在激活 Carla_3.8 环境...
+>>> 正在搜索 Python 3.x 版本的 CARLA 库...
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+>>> 启动 GUI...
+>>> 启动时间: 2026年 01月 13日 星期二 16:37:51 CST
+>>> 工作目录: /home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen
+>>> 正在激活 Carla_3.8 环境...
+>>> 正在搜索 Python 3.x 版本的 CARLA 库...
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+>>> 启动 GUI...
+>>> 启动时间: 2026年 01月 14日 星期三 16:40:13 CST
+>>> 工作目录: /home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen
+>>> 正在激活 Carla_3.8 环境...
+>>> 正在搜索 Python 3.x 版本的 CARLA 库...
+>>> 已添加 CARLA 库: /home/zxw/CARLA/PythonAPI/carla/dist/carla-0.9.15-py3.7-linux-x86_64.egg
+>>> 启动 GUI...
+Traceback (most recent call last):
+  File "/home/zxw/CARLA/PythonAPI/CarlaOpenLaneGen/gui/worker.py", line 111, in run
+    rgb, depth, seg, tf = sensor_mgr.get_synced_frames(timeout=2.0)
+TypeError: get_synced_frames() missing 1 required positional argument: 'target_frame_id'
