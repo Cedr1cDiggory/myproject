@@ -29,6 +29,39 @@ class WeatherManager(object):
         self.light_manager = world.get_lightmanager()
         self.weather = self.world.get_weather()
 
+    def apply_long_tail_weather(self, target_mode=None):
+        """
+        自定义长尾/困难场景 (复用官方参数接口)
+        target_mode: 可指定 'glare', 'heavy_fog', 'storm_aftermath'。如果为 None 则随机。
+        """
+        options = ['glare', 'heavy_fog', 'storm_aftermath']
+        
+        if target_mode is not None and target_mode in options:
+            mode = target_mode
+        else:
+            mode = random.choice(options)
+        
+        if mode == 'glare':
+            # 眩光模式：低太阳角度(sunset) + 湿滑路面(wetness)
+            self.set_preset('sunset', 'clear')
+            self.weather.wetness = 80.0
+            self.weather.precipitation_deposits = 50.0
+            
+        elif mode == 'heavy_fog':
+            # 团雾模式
+            self.set_preset('day', 'overcast')
+            self.weather.fog_density = 60.0
+            self.weather.fog_distance = 10.0
+            
+        elif mode == 'storm_aftermath':
+            # 暴雨后
+            self.set_preset('day', 'clear')
+            self.weather.precipitation_deposits = 90.0
+            self.weather.wetness = 100.0
+
+        self.world.set_weather(self.weather)
+        print(f"[Weather] Long-Tail Mode: {mode}")
+        return mode
     def set_preset(self, sun_preset='day', weather_preset='clear'):
         """
         组合应用 太阳预设 + 天气预设
@@ -66,34 +99,6 @@ class WeatherManager(object):
         weather = random.choice(list(self.WEATHER_PRESETS.keys()))
         
         return self.set_preset(sun, weather)
-
-    def apply_long_tail_weather(self):
-        """
-        自定义长尾/困难场景 (复用官方参数接口)
-        """
-        mode = random.choice(['glare', 'heavy_fog', 'storm_aftermath'])
-        
-        if mode == 'glare':
-            # 眩光模式：低太阳角度(sunset) + 湿滑路面(wetness)
-            self.set_preset('sunset', 'clear')
-            self.weather.wetness = 80.0  # 强制修改湿度
-            self.weather.precipitation_deposits = 50.0
-            
-        elif mode == 'heavy_fog':
-            # 团雾模式
-            self.set_preset('day', 'overcast')
-            self.weather.fog_density = 60.0
-            self.weather.fog_distance = 10.0
-            
-        elif mode == 'storm_aftermath':
-            # 暴雨后：天晴了，但地上全是以往的积水
-            self.set_preset('day', 'clear')
-            self.weather.precipitation_deposits = 90.0
-            self.weather.wetness = 100.0
-
-        self.world.set_weather(self.weather)
-        print(f"[Weather] Long-Tail Mode: {mode}")
-        return mode
 
     # ---------------------------------------------------------
     # 内部辅助函数

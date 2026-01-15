@@ -265,9 +265,9 @@ class OpenLaneGenerator:
                 continue
 
             # 立交/地道过滤：ground z 太偏离 0 则丢弃
-            z_mean = float(np.mean(points_ground[2, :]))
-            if abs(z_mean) > 0.5:
-                continue
+            # z_mean = float(np.mean(points_ground[2, :]))
+            # if abs(z_mean) > 0.5:
+            #     continue
 
             # 投影（用 E_apollo_cam_to_ground + K）
             uv, vis = _project_ground_to_uv(points_ground, E_apollo_cam_to_ground, self.K, self.W, self.H)

@@ -146,8 +146,8 @@ def main():
     argparser = argparse.ArgumentParser(description='批量可视化 OpenLane 数据集 (清晰版)')
     
     argparser.add_argument('--root_dir', default="data/OpenLane", help='数据根目录')
-    argparser.add_argument('--split', default="training", help='training 或 validation')
-    argparser.add_argument('--segment', default="segment-town05-000", help='要可视化的 segment 文件夹名')
+    argparser.add_argument('--split', default="validation", help='training 或 validation')
+    argparser.add_argument('--segment', default="segment-Town03-sunset_overcast-000", help='要可视化的 segment 文件夹名')
     argparser.add_argument('--max_frames', type=int, default=None, help='最大可视化帧数，不填则全部处理')
     
     args = argparser.parse_args()

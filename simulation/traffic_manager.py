@@ -291,3 +291,4 @@ class NPCManager(object):
                         actor.stop()
                     actor.destroy()
                 except: pass
+    
