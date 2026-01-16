@@ -306,12 +306,44 @@ class OpenLaneGenerator:
                         break
             if not is_dup:
                 unique_lanes.append(lane)
+        # [新增适配] 逆向工程：生成适配 OpenLane 预处理脚本的外参矩阵
+        # ------------------------------------------------------------
+        # 目的：预处理脚本 (openlane.txt) 会假设输入是 Waymo 格式，并执行：
+        #      R_final = inv(R_vg) @ R_json @ R_vg @ R_gc
+        # 我们需要构造一个 R_json，使得 R_final 等于我们现在计算好的 E_apollo_cam_to_ground
+        # 公式：R_json = R_vg @ R_final @ inv(R_gc) @ inv(R_vg)
+        # ============================================================
+        
+        # 1. 定义脚本中的变换矩阵 (完全复制自 openlane.txt)
+        R_vg = np.array([[0, 1, 0],
+                         [-1, 0, 0],
+                         [0, 0, 1]], dtype=np.float64)
+                         
+        R_gc = np.array([[1, 0, 0],
+                         [0, 0, 1],
+                         [0, -1, 0]], dtype=np.float64)
+
+        # 2. 取出我们需要脚本最终得到的旋转矩阵 (Target)
+        # E_apollo_cam_to_ground 是 4x4，我们只处理前 3x3 旋转部分
+        R_target = E_apollo_cam_to_ground[:3, :3]
+
+        # 3. 执行逆运算计算 R_json
+        # 注意：R_gc 是正交矩阵，inv(R_gc) == R_gc.T，这里直接用 inv 保持数学直观
+        R_json = R_vg @ R_target @ np.linalg.inv(R_gc) @ np.linalg.inv(R_vg)
+
+        # 4. 组装最终写入 JSON 的外参矩阵
+        # 脚本只修改旋转矩阵，平移向量 (Translation) 会被直接读取。
+        # 这里的平移向量 E_apollo_cam_to_ground[:3, 3] 代表相机在 Ground 坐标系下的位置
+        # (即 Camera Height 等)，这正是脚本需要的，所以直接复制。
+        E_json_compatible = np.eye(4, dtype=np.float64)
+        E_json_compatible[:3, :3] = R_json
+        E_json_compatible[:3, 3] = E_apollo_cam_to_ground[:3, 3]
 
         return {
             "lane_lines": unique_lanes,
             "intrinsic": self.K.tolist(),
             # ★关键：extrinsic 存 ApolloCam -> Ground (cam_to_ground) ★
-            "extrinsic": E_apollo_cam_to_ground.tolist(),
+            "extrinsic": E_json_compatible.tolist(),
             "file_path": ""
         }
 
