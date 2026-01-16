@@ -11,7 +11,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 # 引入你项目中的模块
 from simulation.sensor_manager import SyncSensorManager
-from simulation.traffic_manager import NPCManager 
+# from simulation.traffic_manager import NPCManager # 如果你暂时没用到 NPCManager，可以先注释掉
 from core.generator import OpenLaneGenerator
 from core.geometry import GeometryUtils
 
@@ -35,14 +35,14 @@ class CarlaWorker(QThread):
         self.is_running = False
 
     def run(self):
-        """线程入口，包含原本 main.py 的逻辑"""
+        """线程入口"""
         try:
             self.log_signal.emit(f"Connecting to CARLA at {self.cfg['host']}:{self.cfg['port']}...")
             
             client = carla.Client(self.cfg['host'], self.cfg['port'])
             client.set_timeout(20.0)
 
-            # 加载地图
+            # 1. 加载地图
             curr_map = client.get_world().get_map().name.split('/')[-1]
             if curr_map != self.cfg['town']:
                 self.log_signal.emit(f"Loading map: {self.cfg['town']}...")
@@ -50,17 +50,18 @@ class CarlaWorker(QThread):
             else:
                 world = client.get_world()
 
-            
+            # 2. 设置同步模式 (必须)
             settings = world.get_settings()
             settings.synchronous_mode = True
-            settings.fixed_delta_seconds = 0.1
+            settings.fixed_delta_seconds = 0.1 # 10 FPS
             world.apply_settings(settings)
             
+            # 设置交通管理器 (可选)
             tm = client.get_trafficmanager(self.cfg['tm_port'])
             tm.set_synchronous_mode(True)
             tm.set_random_device_seed(self.cfg['seed'])
 
-            # Spawn Ego
+            # 3. 生成主车 (Ego)
             bp_lib = world.get_blueprint_library()
             vehicle_bp = bp_lib.find('vehicle.tesla.model3')
             vehicle_bp.set_attribute('role_name', 'hero')
@@ -69,12 +70,18 @@ class CarlaWorker(QThread):
             ego_vehicle = None
             
             # 简单的寻找出生点逻辑
-            for sp in spawn_points:
-                wp = world.get_map().get_waypoint(sp.location, project_to_road=True)
-                if wp and wp.lane_type == carla.LaneType.Driving:
-                    ego_vehicle = world.try_spawn_actor(vehicle_bp, sp)
-                    if ego_vehicle: break
+            import random
+            random.shuffle(spawn_points) # 随机打乱，防止每次都在同一个点
             
+            for sp in spawn_points:
+                ego_vehicle = world.try_spawn_actor(vehicle_bp, sp)
+                if ego_vehicle: break
+            
+            if not ego_vehicle:
+                # 尝试抬高 Z 轴强行生成
+                spawn_points[0].location.z += 2.0
+                ego_vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[0])
+                
             if not ego_vehicle:
                 raise RuntimeError("Failed to spawn ego vehicle")
 
@@ -82,14 +89,16 @@ class CarlaWorker(QThread):
             tm.ignore_lights_percentage(ego_vehicle, 100.0)
             tm.auto_lane_change(ego_vehicle, False)
 
-            # 传感器初始化
+            # 4. 初始化传感器管理器
             W, H = 1920, 1280
             FOV = 51.0
             sensor_mgr = SyncSensorManager(world, ego_vehicle, w=W, h=H, fov=FOV)
+            
+            # 初始化生成器
             K = GeometryUtils.build_projection_matrix(W, H, FOV)
             generator = OpenLaneGenerator(world, camera_k=K)
 
-            # 目录准备
+            # 5. 准备保存目录
             output_dir = "data/OpenLane"
             img_dir = os.path.join(output_dir, "images", self.cfg['split'], self.cfg['segment'])
             json_dir = os.path.join(output_dir, "lane3d_1000", self.cfg['split'], self.cfg['segment'])
@@ -97,7 +106,8 @@ class CarlaWorker(QThread):
             os.makedirs(json_dir, exist_ok=True)
 
             self.log_signal.emit("Warming up simulation...")
-            for _ in range(20): world.tick()
+            for _ in range(20): 
+                world.tick()
 
             frame_count = 0
             last_save_loc = None
@@ -105,49 +115,45 @@ class CarlaWorker(QThread):
 
             self.log_signal.emit(">>> Start Recording <<<")
 
+            # === 主循环 ===
             while self.is_running and frame_count < target_frames:
-                world.tick()
+                # [关键修复] 获取 frame_id
+                frame_id = world.tick()
 
-                rgb, depth, seg, tf = sensor_mgr.get_synced_frames(timeout=2.0)
-                if rgb is None: continue
+                # [关键修复] 传入 frame_id 给 sensor_manager
+                rgb, depth, seg, tf = sensor_mgr.get_synced_frames(frame_id, timeout=2.0)
                 
-                # 1. 获取原始数据 (CARLA 默认是 BGRA, 4通道)
+                if rgb is None: 
+                    # self.log_signal.emit("Frame Drop or Timeout")
+                    continue
+                
+                # 处理图像显示
                 img_bgra = np.frombuffer(rgb.raw_data, dtype=np.uint8).reshape(H, W, 4)
-                
-                # 2. 去掉 Alpha 通道，保留前3个通道 (变为 BGR)
                 img_bgr = img_bgra[:, :, :3]
-                
-                # 3. 准备用于显示的图片 (BGR -> RGB)
-                # 这一步解决了“色彩不对”问题
                 img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                
-                # 4. 发送 RGB 数据给 Qt 界面显示
-                # 此时 img_rgb 的 shape 是 (H, W, 3)，完全符合 Qt 的预期
-                self.image_signal.emit(img_rgb)
-                # ================= 修复核心结束 =================
+                self.image_signal.emit(img_rgb) # 发送给 UI 显示
 
-                # 逻辑判断
+                # 状态更新
                 loc = ego_vehicle.get_location()
                 v = ego_vehicle.get_velocity()
                 speed = 3.6 * (v.x**2 + v.y**2 + v.z**2)**0.5 # km/h
-                
                 self.status_signal.emit(f"Speed: {speed:.1f} km/h | Frames: {frame_count}/{target_frames}")
 
-                # 简单过滤
-                if speed / 3.6 < self.cfg['min_speed']: continue
+                # 过滤逻辑 (停车时不保存)
+                if speed < self.cfg['min_speed']: continue
                 if last_save_loc and loc.distance(last_save_loc) < self.cfg['min_dist']: continue
 
-                # 生成车道线
+                # 生成 OpenLane 数据
                 result = generator.process_frame(ego_vehicle, tf, seg_image=seg)
                 lane_count = len(result['lane_lines'])
 
                 if lane_count > 0:
                     file_id = f"{frame_count:06d}"
                     
-                    # Save Image (RGB -> BGR for OpenCV)
+                    # 保存图片 (OpenCV 使用 BGR)
                     cv2.imwrite(os.path.join(img_dir, f"{file_id}.jpg"), img_bgr)
                     
-                    # Save JSON
+                    # 保存 JSON
                     result["file_path"] = f"{self.cfg['split']}/{self.cfg['segment']}/{file_id}.jpg"
                     with open(os.path.join(json_dir, f"{file_id}.json"), 'w') as f:
                         json.dump(result, f)
@@ -155,10 +161,11 @@ class CarlaWorker(QThread):
                     frame_count += 1
                     last_save_loc = loc
                     
-                    # 更新进度条
+                    # 更新进度
                     progress = int((frame_count / target_frames) * 100)
                     self.progress_signal.emit(progress)
-                    self.log_signal.emit(f"Saved Frame {file_id} | Lanes: {lane_count}")
+                    if frame_count % 10 == 0:
+                        self.log_signal.emit(f"Saved {file_id} | Lanes: {lane_count}")
 
             self.log_signal.emit("Collection Finished.")
 

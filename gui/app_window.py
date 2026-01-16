@@ -1,320 +1,24 @@
-# import sys
-# import numpy as np
-# import os
-
-# # 1. 导入 PyQt5 组件 (已修复：添加了 QProgressBar)
-# from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
-#                              QHBoxLayout, QLabel, QLineEdit, 
-#                              QPushButton, QComboBox, QSizePolicy, 
-#                              QProgressBar, QFrame, QSpacerItem)
-# from PyQt5.QtCore import Qt, pyqtSlot
-# from PyQt5.QtGui import QImage, QPixmap
-
-# # 2. 导入自定义模块
-# from .styles import MODERN_THEME
-# from .worker import CarlaWorker
-
-# # 3. 尝试导入图标库 (可选)
-# try:
-#     import qtawesome as qta
-#     HAS_ICONS = True
-# except ImportError:
-#     HAS_ICONS = False
-#     print("提示: 未安装 qtawesome，将不显示图标 (pip install qtawesome)")
-
-# class MainWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.setWindowTitle("CARLA OpenLane Data Collector")
-#         self.resize(1280, 720) # 调整为适合宽屏的分辨率
-        
-#         # 应用样式表
-#         self.setStyleSheet(MODERN_THEME)
-        
-#         self.worker = None
-#         self.init_ui()
-
-#     def init_ui(self):
-#         # --- 主容器 ---
-#         main_widget = QWidget()
-#         self.setCentralWidget(main_widget)
-        
-#         # 外层布局：垂直布局 (Header + Body)
-#         outer_layout = QVBoxLayout(main_widget)
-#         outer_layout.setContentsMargins(25, 25, 25, 25)
-#         outer_layout.setSpacing(20)
-
-#         # =========================================
-#         # 1. 顶部标题栏 (Header)
-#         # =========================================
-#         header_layout = QHBoxLayout()
-        
-#         # 模拟 Logo (可以用 Emoji 或者图片)
-#         logo_label = QLabel("🚙") 
-#         logo_label.setStyleSheet("font-size: 28px; background: transparent;")
-        
-#         title_label = QLabel("CARLA OpenLane Data Collector")
-#         title_label.setObjectName("HeaderTitle") # 对应样式表中的字体设置
-        
-#         header_layout.addWidget(logo_label)
-#         header_layout.addWidget(title_label)
-#         header_layout.addStretch() # 把标题顶在左边
-        
-#         outer_layout.addLayout(header_layout)
-
-#         # =========================================
-#         # 2. 内容主体 (Split View: Left Panel | Right Video)
-#         # =========================================
-#         body_layout = QHBoxLayout()
-#         body_layout.setSpacing(25)
-
-#         # -----------------------------------
-#         # A. 左侧控制面板 (Side Panel)
-#         # -----------------------------------
-#         side_panel = QWidget()
-#         side_panel.setObjectName("SidePanel") # 对应样式表圆角背景
-#         side_panel.setFixedWidth(340)       # 固定宽度，保持紧凑
-        
-#         side_layout = QVBoxLayout(side_panel)
-#         side_layout.setContentsMargins(20, 25, 20, 25)
-#         side_layout.setSpacing(15)
-
-#         # -- Connection --
-#         side_layout.addWidget(self.create_label("Host Connection:"))
-#         conn_layout = QHBoxLayout()
-#         self.ip_input = QLineEdit("127.0.0.1")
-#         self.port_input = QLineEdit("2000")
-#         self.setup_input_icon(self.ip_input, "fa5s.desktop")
-#         self.setup_input_icon(self.port_input, "fa5s.plug")
-        
-#         conn_layout.addWidget(self.ip_input, 7)
-#         conn_layout.addWidget(self.port_input, 3)
-#         side_layout.addLayout(conn_layout)
-
-#         # -- Map --
-#         side_layout.addWidget(self.create_label("Map Selection:"))
-#         self.map_combo = QComboBox()
-#         self.map_combo.addItems(["Town10HD", "Town04", "Town05", "Town03", "Town01", "Town02"])
-#         self.map_combo.setFixedHeight(40)
-#         side_layout.addWidget(self.map_combo)
-
-#         # -- Target Frames --
-#         side_layout.addWidget(self.create_label("Target Frames:"))
-#         self.frames_input = QLineEdit("3000")
-#         self.frames_input.setPlaceholderText("e.g. 3000")
-#         self.setup_input_icon(self.frames_input, "fa5s.camera")
-#         self.frames_input.setFixedHeight(40)
-#         side_layout.addWidget(self.frames_input)
-
-#         # -- Segment Name --
-#         side_layout.addWidget(self.create_label("Segment Name:"))
-#         self.segment_input = QLineEdit("segment-0")
-#         self.setup_input_icon(self.segment_input, "fa5s.folder")
-#         self.segment_input.setFixedHeight(40)
-#         side_layout.addWidget(self.segment_input)
-
-#         # -- Dataset Split --
-#         side_layout.addWidget(self.create_label("Dataset Split:"))
-#         self.split_combo = QComboBox()
-#         self.split_combo.addItems(["training", "validation"])
-#         self.split_combo.setFixedHeight(40)
-#         side_layout.addWidget(self.split_combo)
-
-#         # 弹簧组件，将按钮顶到底部
-#         side_layout.addStretch()
-
-#         # -- Buttons --
-#         self.start_btn = QPushButton("START COLLECTION")
-#         self.start_btn.setObjectName("startBtn")
-#         self.start_btn.setCursor(Qt.PointingHandCursor)
-#         self.start_btn.clicked.connect(self.start_collection)
-#         if HAS_ICONS:
-#             self.start_btn.setIcon(qta.icon('fa5s.play', color='white'))
-        
-#         self.stop_btn = QPushButton("STOP")
-#         self.stop_btn.setObjectName("stopButton")
-#         self.stop_btn.setCursor(Qt.PointingHandCursor)
-#         self.stop_btn.setEnabled(False)
-#         self.stop_btn.clicked.connect(self.stop_collection)
-        
-#         side_layout.addWidget(self.start_btn)
-#         side_layout.addWidget(self.stop_btn)
-
-#         body_layout.addWidget(side_panel)
-
-#         # -----------------------------------
-#         # B. 右侧视频监控区 (Video Panel)
-#         # -----------------------------------
-#         video_layout = QVBoxLayout()
-        
-#         # 1. 视频显示区域 (使用黑色背景 QLabel)
-#         self.image_label = QLabel()
-#         self.image_label.setAlignment(Qt.AlignCenter)
-#         self.image_label.setStyleSheet("""
-#             QLabel {
-#                 background-color: #000000;
-#                 border-radius: 12px;
-#                 border: 2px solid #282c34;
-#             }
-#         """)
-#         self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-#         self.set_placeholder_image() # 显示初始文字
-#         video_layout.addWidget(self.image_label)
-
-#         # 2. 状态栏容器 (包含状态字和进度条)
-#         status_container = QWidget()
-#         status_container.setStyleSheet("background-color: #282c34; border-radius: 8px;")
-#         status_bar_layout = QVBoxLayout(status_container)
-#         status_bar_layout.setContentsMargins(15, 10, 15, 10)
-
-#         # 上排：状态文本 + 百分比
-#         info_row = QHBoxLayout()
-#         self.status_label = QLabel("Status: Idle")
-#         self.status_label.setStyleSheet("color: #61afef; font-weight: bold; font-size: 14px;")
-        
-#         self.percent_label = QLabel("0%")
-#         self.percent_label.setStyleSheet("color: #abb2bf; font-weight: bold;")
-        
-#         info_row.addWidget(self.status_label)
-#         info_row.addStretch()
-#         info_row.addWidget(self.percent_label)
-        
-#         # 下排：进度条
-#         self.progress_bar = QProgressBar()
-#         self.progress_bar.setValue(0)
-#         self.progress_bar.setTextVisible(False) # 隐藏自带文字，追求极简
-#         self.progress_bar.setFixedHeight(6)     # 细条风格
-        
-#         status_bar_layout.addLayout(info_row)
-#         status_bar_layout.addWidget(self.progress_bar)
-
-#         video_layout.addWidget(status_container)
-        
-#         body_layout.addLayout(video_layout, stretch=1) # 右侧占用剩余空间
-#         outer_layout.addLayout(body_layout)
-
-#     # --- 辅助 UI 函数 ---
-#     def create_label(self, text):
-#         lbl = QLabel(text)
-#         # 稍微调暗一点的灰色文字
-#         lbl.setStyleSheet("font-size: 13px; color: #8b949e; font-weight: 500;")
-#         return lbl
-
-#     def setup_input_icon(self, widget, icon_name):
-#         if HAS_ICONS and isinstance(widget, QLineEdit):
-#             # 在输入框左侧添加图标
-#             action = widget.addAction(qta.icon(icon_name, color='#5c6370'), QLineEdit.LeadingPosition)
-
-#     def set_placeholder_image(self):
-#         self.image_label.setText("Waiting for camera stream...\n\nPlease click [START COLLECTION]")
-#         self.image_label.setStyleSheet("background-color: #000; color: #666; font-size: 16px; border-radius: 12px;")
-
-#     # --- 逻辑控制部分 ---
-
-#     def start_collection(self):
-#         # 获取用户输入
-#         try:
-#             frames_val = int(self.frames_input.text())
-#             port_val = int(self.port_input.text())
-#         except ValueError:
-#             self.status_label.setText("Error: Invalid number format!")
-#             return
-
-#         config = {
-#             'host': self.ip_input.text(),
-#             'port': port_val,
-#             'town': self.map_combo.currentText(),
-#             'frames': frames_val,
-#             'segment': self.segment_input.text(),
-#             'split': self.split_combo.currentText(),
-#             'tm_port': 8000,
-#             'seed': 42,
-#             'min_speed': 1.0,
-#             'min_dist': 3.0
-#         }
-
-#         # 实例化后台线程
-#         self.worker = CarlaWorker(config)
-        
-#         # 绑定信号
-#         self.worker.image_signal.connect(self.update_image)
-#         self.worker.progress_signal.connect(self.update_progress)
-#         self.worker.status_signal.connect(self.update_status) # 专门处理文本状态
-#         self.worker.finished_signal.connect(self.on_worker_finished)
-        
-#         # 启动
-#         self.worker.start()
-        
-#         # UI 状态切换
-#         self.start_btn.setEnabled(False)
-#         self.stop_btn.setEnabled(True)
-#         self.progress_bar.setValue(0)
-#         self.percent_label.setText("0%")
-#         self.image_label.setText("Connecting to CARLA...")
-#         self.status_label.setText("Status: Initializing...")
-
-#     def stop_collection(self):
-#         if self.worker:
-#             self.status_label.setText("Status: Stopping (Cleaning up)...")
-#             self.worker.stop()
-#             self.stop_btn.setEnabled(False) # 防止重复点击
-
-#     def on_worker_finished(self):
-#         self.start_btn.setEnabled(True)
-#         self.stop_btn.setEnabled(False)
-#         self.status_label.setText("Status: Idle (Finished)")
-#         self.set_placeholder_image()
-#         self.worker = None
-
-#     def update_progress(self, val):
-#         self.progress_bar.setValue(val)
-#         self.percent_label.setText(f"{val}%")
-
-#     @pyqtSlot(str)
-#     def update_status(self, text):
-#         self.status_label.setText(text)
-
-#     @pyqtSlot(np.ndarray)
-#     def update_image(self, cv_img):
-#         """将 Worker 传来的 OpenCV 图像转换为 QPixmap 显示"""
-#         try:
-#             h, w, ch = cv_img.shape
-#             bytes_per_line = ch * w 
-            
-#             # 假设 worker 已经转为 RGB 格式
-#             qt_img = QImage(cv_img.data, w, h, bytes_per_line, QImage.Format_RGB888)
-            
-#             # 缩放以适应 Label 大小 (保持比例)
-#             pixmap = QPixmap.fromImage(qt_img).scaled(
-#                 self.image_label.width(), 
-#                 self.image_label.height(), 
-#                 Qt.KeepAspectRatio,
-#                 Qt.SmoothTransformation
-#             )
-#             self.image_label.setPixmap(pixmap)
-#         except Exception as e:
-#             print(f"Image Error: {e}")
 # gui/app_window.py
 import sys
 import os
-import cv2
 import numpy as np
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QGridLayout, QLabel, QLineEdit, QPushButton, 
                              QComboBox, QGroupBox, QTextEdit, QProgressBar, 
-                             QSpinBox, QTabWidget, QFileDialog, QMessageBox)
+                             QSpinBox, QTabWidget, QFileDialog, QMessageBox,
+                             QSpacerItem, QSizePolicy) # 添加了 Spacer
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QImage, QPixmap
 
 from .styles import DARK_THEME
 from .worker import CarlaWorker
-from .validation_worker import ValidationWorker  # 导入新 Worker
+from .validation_worker import ValidationWorker
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CARLA OpenLane Studio") # 名字升级一下
-        self.resize(1280, 850)
+        self.setWindowTitle("CARLA OpenLane Studio")
+        self.resize(1360, 900) # 稍微加宽一点以容纳更多参数
         self.setStyleSheet(DARK_THEME)
 
         self.collection_worker = None
@@ -339,100 +43,187 @@ class MainWindow(QMainWindow):
         self.init_validation_ui()
 
     # ==========================================
-    # Tab 1: 数据采集 (原有逻辑封装)
+    # Tab 1: 数据采集 (功能增强版)
     # ==========================================
     def init_collection_ui(self):
         layout = QHBoxLayout(self.tab_collection)
         
-        # --- 左侧控制面板 ---
+        # --- 左侧控制面板 (Scrollable 或者紧凑布局) ---
+        # 为了防止屏幕小显示不下，这里使用紧凑布局
         left_panel = QVBoxLayout()
+        left_panel.setSpacing(15) # 稍微拉开一点间距
         
-        # Connection
-        conn_group = QGroupBox("Connection Settings")
+        # 1. Connection Group
+        conn_group = QGroupBox("Connection")
         conn_layout = QGridLayout()
         self.ip_input = QLineEdit("127.0.0.1")
         self.port_input = QLineEdit("2000")
-        conn_layout.addWidget(QLabel("Host IP:"), 0, 0); conn_layout.addWidget(self.ip_input, 0, 1)
+        conn_layout.addWidget(QLabel("IP:"), 0, 0); conn_layout.addWidget(self.ip_input, 0, 1)
         conn_layout.addWidget(QLabel("Port:"), 1, 0); conn_layout.addWidget(self.port_input, 1, 1)
         conn_group.setLayout(conn_layout)
         left_panel.addWidget(conn_group)
 
-        # Environment
-        env_group = QGroupBox("Environment")
-        env_layout = QVBoxLayout()
+        # 2. Map & Basic Settings
+        basic_group = QGroupBox("Basic Settings")
+        basic_layout = QGridLayout()
+        
         self.map_combo = QComboBox()
-        self.map_combo.addItems(["Town10HD", "Town04", "Town05", "Town03"])
-        env_layout.addWidget(QLabel("Map:"))
-        env_layout.addWidget(self.map_combo)
-        env_group.setLayout(env_layout)
-        left_panel.addWidget(env_group)
-
-        # Params
-        param_group = QGroupBox("Collection Params")
-        param_layout = QGridLayout()
-        self.frames_spin = QSpinBox()
-        self.frames_spin.setRange(100, 100000); self.frames_spin.setValue(3000); self.frames_spin.setSingleStep(100)
+        self.map_combo.addItems(["Town10HD", "Town04", "Town05", "Town03", "Town01", "Town02"])
+        
+        self.split_combo = QComboBox()
+        self.split_combo.addItems(["training", "validation"])
+        
         self.segment_input = QLineEdit("segment-0")
-        self.split_combo = QComboBox(); self.split_combo.addItems(["training", "validation"])
-        param_layout.addWidget(QLabel("Target Frames:"), 0, 0); param_layout.addWidget(self.frames_spin, 0, 1)
-        param_layout.addWidget(QLabel("Segment Name:"), 1, 0); param_layout.addWidget(self.segment_input, 1, 1)
-        param_layout.addWidget(QLabel("Dataset Split:"), 2, 0); param_layout.addWidget(self.split_combo, 2, 1)
-        param_group.setLayout(param_layout)
-        left_panel.addWidget(param_group)
+        self.segment_input.setPlaceholderText("Folder Name")
+        
+        basic_layout.addWidget(QLabel("Map:"), 0, 0); basic_layout.addWidget(self.map_combo, 0, 1)
+        basic_layout.addWidget(QLabel("Split:"), 1, 0); basic_layout.addWidget(self.split_combo, 1, 1)
+        basic_layout.addWidget(QLabel("Name:"), 2, 0); basic_layout.addWidget(self.segment_input, 2, 1)
+        basic_group.setLayout(basic_layout)
+        left_panel.addWidget(basic_group)
+
+        # 3. Simulation Config (新增：天气、交通、障碍物)
+        sim_group = QGroupBox("Simulation Config")
+        sim_layout = QGridLayout()
+        
+        # 天气选择 (对应 WeatherManager)
+        self.weather_combo = QComboBox()
+        # 对应你后端 weather_manager.py 的逻辑
+        self.weather_combo.addItems([
+            "Random (Default)",    # 随机
+            "Clear Noon",          # 晴天
+            "Overcast",            # 阴天
+            "Rain",                # 下雨
+            "LongTail: Glare",     # 长尾：眩光
+            "LongTail: Heavy Fog", # 长尾：团雾
+            "LongTail: After Rain" # 长尾：雨后
+        ])
+        
+        # 车辆数量 (对应 TrafficManager)
+        self.vehicle_spin = QSpinBox()
+        self.vehicle_spin.setRange(0, 200); self.vehicle_spin.setValue(50)
+        
+        # 行人数量 (对应 TrafficManager)
+        self.walker_spin = QSpinBox()
+        self.walker_spin.setRange(0, 200); self.walker_spin.setValue(20)
+        
+        # 障碍物数量 (对应 SceneManager)
+        self.props_spin = QSpinBox()
+        self.props_spin.setRange(0, 100); self.props_spin.setValue(10)
+        
+        # 布局
+        sim_layout.addWidget(QLabel("Weather:"), 0, 0)
+        sim_layout.addWidget(self.weather_combo, 0, 1)
+        
+        sim_layout.addWidget(QLabel("Vehicles:"), 1, 0)
+        sim_layout.addWidget(self.vehicle_spin, 1, 1)
+        
+        sim_layout.addWidget(QLabel("Walkers:"), 2, 0)
+        sim_layout.addWidget(self.walker_spin, 2, 1)
+
+        sim_layout.addWidget(QLabel("Obstacles:"), 3, 0)
+        sim_layout.addWidget(self.props_spin, 3, 1)
+        
+        sim_group.setLayout(sim_layout)
+        left_panel.addWidget(sim_group)
+
+        # 4. Capture Params
+        cap_group = QGroupBox("Capture Params")
+        cap_layout = QHBoxLayout()
+        self.frames_spin = QSpinBox()
+        self.frames_spin.setRange(100, 100000)
+        self.frames_spin.setValue(3000)
+        self.frames_spin.setSingleStep(100)
+        self.frames_spin.setSuffix(" frames")
+        cap_layout.addWidget(QLabel("Target:"))
+        cap_layout.addWidget(self.frames_spin)
+        cap_group.setLayout(cap_layout)
+        left_panel.addWidget(cap_group)
 
         # Buttons
-        self.start_btn = QPushButton("START COLLECTION")
-        self.start_btn.setMinimumHeight(50)
+        btn_layout = QHBoxLayout()
+        self.start_btn = QPushButton("START")
+        self.start_btn.setMinimumHeight(45)
         self.start_btn.clicked.connect(self.start_collection)
+        
         self.stop_btn = QPushButton("STOP")
         self.stop_btn.setObjectName("stopButton")
-        self.stop_btn.setMinimumHeight(40); self.stop_btn.setEnabled(False)
+        self.stop_btn.setMinimumHeight(45)
+        self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self.stop_collection)
-        left_panel.addWidget(self.start_btn)
-        left_panel.addWidget(self.stop_btn)
-        left_panel.addStretch()
+        
+        btn_layout.addWidget(self.start_btn)
+        btn_layout.addWidget(self.stop_btn)
+        
+        left_panel.addStretch() # 弹簧
+        left_panel.addLayout(btn_layout)
 
         # --- 右侧显示区域 ---
         right_panel = QVBoxLayout()
-        self.image_label = QLabel("Waiting for stream...")
+        
+        # 视频区域
+        self.image_label = QLabel("Waiting for CARLA stream...")
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setStyleSheet("background-color: #000; border: 2px solid #333;")
+        self.image_label.setStyleSheet("background-color: #000; border: 2px solid #333; border-radius: 4px;")
         self.image_label.setMinimumSize(800, 450)
+        self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
-        status_layout = QHBoxLayout()
+        # 状态栏
+        status_container = QWidget()
+        status_container.setStyleSheet("background-color: #252526; border-radius: 4px;")
+        status_layout = QHBoxLayout(status_container)
+        
         self.status_label = QLabel("Status: Idle")
-        self.status_label.setStyleSheet("font-size: 16px; color: #00acc1; font-weight: bold;")
-        status_layout.addWidget(self.status_label)
+        self.status_label.setStyleSheet("font-size: 14px; color: #00acc1; font-weight: bold;")
         
+        self.percent_label = QLabel("0%")
+        self.percent_label.setStyleSheet("color: #888;")
+
+        status_layout.addWidget(self.status_label)
+        status_layout.addStretch()
+        status_layout.addWidget(self.percent_label)
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(8)
         
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setMaximumHeight(150)
+        self.log_text.setPlaceholderText("System logs will appear here...")
 
-        right_panel.addWidget(self.image_label, stretch=3)
-        right_panel.addLayout(status_layout)
+        right_panel.addWidget(self.image_label, stretch=4)
+        right_panel.addWidget(status_container)
         right_panel.addWidget(self.progress_bar)
         right_panel.addWidget(self.log_text, stretch=1)
 
-        layout.addLayout(left_panel, stretch=1)
-        layout.addLayout(right_panel, stretch=3)
+        # 组合左右
+        # 左侧固定宽度，右侧自适应
+        left_container = QWidget()
+        left_container.setLayout(left_panel)
+        left_container.setFixedWidth(320) # 稍微加宽以容纳文字
+        
+        layout.addWidget(left_container)
+        layout.addLayout(right_panel)
 
     # ==========================================
-    # Tab 2: 批量验证 (新功能)
+    # Tab 2: 批量验证 (保持不变，仅适配样式)
     # ==========================================
     def init_validation_ui(self):
         layout = QVBoxLayout(self.tab_validation)
+        layout.setContentsMargins(30, 30, 30, 30) # 增加内边距
         
         # 1. 顶部设置栏
         top_group = QGroupBox("Validation Configuration")
         top_layout = QGridLayout()
+        top_layout.setVerticalSpacing(15)
         
         # 输入路径
         self.val_path_input = QLineEdit()
-        self.val_path_input.setPlaceholderText("Path to json folder (e.g. data/OpenLane/lane3d_1000/training/segment-0)")
-        btn_browse = QPushButton("Browse...")
+        self.val_path_input.setPlaceholderText("Path to dataset folder (e.g. data/OpenLane/lane3d_1000/training/segment-0)")
+        btn_browse = QPushButton("Browse")
+        btn_browse.setFixedWidth(80)
         btn_browse.clicked.connect(self.browse_validation_folder)
         
         top_layout.addWidget(QLabel("Data Folder:"), 0, 0)
@@ -444,11 +235,11 @@ class MainWindow(QMainWindow):
         self.val_w = QSpinBox(); self.val_w.setRange(0, 4000); self.val_w.setValue(1920)
         self.val_h = QSpinBox(); self.val_h.setRange(0, 4000); self.val_h.setValue(1280)
         
-        top_layout.addWidget(QLabel("Num Samples (0=All):"), 1, 0)
+        top_layout.addWidget(QLabel("Samples (0=All):"), 1, 0)
         top_layout.addWidget(self.val_samples, 1, 1)
         
         res_layout = QHBoxLayout()
-        res_layout.addWidget(QLabel("W:"))
+        res_layout.addWidget(QLabel("Resolution W:"))
         res_layout.addWidget(self.val_w)
         res_layout.addWidget(QLabel("H:"))
         res_layout.addWidget(self.val_h)
@@ -458,14 +249,15 @@ class MainWindow(QMainWindow):
         top_group.setLayout(top_layout)
         layout.addWidget(top_group)
         
-        # 2. 按钮
+        # 2. 按钮区
         btn_layout = QHBoxLayout()
         self.btn_start_val = QPushButton("RUN VALIDATION")
-        self.btn_start_val.setMinimumHeight(45)
+        self.btn_start_val.setMinimumHeight(50)
         self.btn_start_val.clicked.connect(self.start_validation)
+        
         self.btn_stop_val = QPushButton("STOP")
         self.btn_stop_val.setObjectName("stopButton")
-        self.btn_stop_val.setMinimumHeight(45)
+        self.btn_stop_val.setMinimumHeight(50)
         self.btn_stop_val.setEnabled(False)
         self.btn_stop_val.clicked.connect(self.stop_validation)
         
@@ -474,13 +266,15 @@ class MainWindow(QMainWindow):
         layout.addLayout(btn_layout)
         
         # 3. 进度与日志
+        layout.addWidget(QLabel("Progress:"))
         self.val_progress = QProgressBar()
         self.val_progress.setValue(0)
+        self.val_progress.setFixedHeight(10)
         layout.addWidget(self.val_progress)
         
+        layout.addWidget(QLabel("Logs:"))
         self.val_log = QTextEdit()
         self.val_log.setReadOnly(True)
-        self.val_log.setStyleSheet("font-family: Consolas; font-size: 13px;")
         layout.addWidget(self.val_log)
 
     # ==========================================
@@ -488,66 +282,110 @@ class MainWindow(QMainWindow):
     # ==========================================
     def log(self, msg):
         self.log_text.append(msg)
+        # 自动滚动到底部
         self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
 
     def start_collection(self):
+        # 1. 获取基础参数
+        try:
+            frames_val = self.frames_spin.value()
+            port_val = int(self.port_input.text())
+        except ValueError:
+            QMessageBox.warning(self, "Error", "Invalid Port Number!")
+            return
+
+        # 2. 获取新的仿真参数
+        weather_mode = self.weather_combo.currentText()
+        # 简单映射一下 ComboBox 文本到 config 字符串 (方便后端处理)
+        if "Random" in weather_mode: w_val = "random"
+        elif "Clear" in weather_mode: w_val = "clear"
+        elif "Overcast" in weather_mode: w_val = "overcast"
+        elif "Rain" in weather_mode: w_val = "rain"
+        elif "Glare" in weather_mode: w_val = "longtail_glare"
+        elif "Fog" in weather_mode: w_val = "longtail_fog"
+        elif "After Rain" in weather_mode: w_val = "longtail_storm"
+        else: w_val = "random"
+
         config = {
             'host': self.ip_input.text(),
-            'port': int(self.port_input.text()),
+            'port': port_val,
             'town': self.map_combo.currentText(),
-            'frames': self.frames_spin.value(),
+            'frames': frames_val,
             'segment': self.segment_input.text(),
             'split': self.split_combo.currentText(),
             'tm_port': 8000,
+            
+            # --- 新增配置传递给后端 ---
+            'num_vehicles': self.vehicle_spin.value(),
+            'num_walkers': self.walker_spin.value(),
+            'num_props': self.props_spin.value(),
+            'weather_mode': w_val,
+            
+            # 固定参数
             'seed': 42,
             'min_speed': 1.0,
             'min_dist': 3.0
         }
+        
         self.collection_worker = CarlaWorker(config)
+        
+        # 信号绑定
         self.collection_worker.log_signal.connect(self.log)
         self.collection_worker.image_signal.connect(self.update_image)
-        self.collection_worker.progress_signal.connect(self.progress_bar.setValue)
+        self.collection_worker.progress_signal.connect(self.update_progress)
         self.collection_worker.status_signal.connect(self.status_label.setText)
         self.collection_worker.finished_signal.connect(self.on_collection_finished)
+        
         self.collection_worker.start()
         
+        # UI 状态更新
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.progress_bar.setValue(0)
+        self.percent_label.setText("0%")
+        self.log(">>> Starting Collection Thread >>>")
+
+    def update_progress(self, val):
+        self.progress_bar.setValue(val)
+        self.percent_label.setText(f"{val}%")
 
     def stop_collection(self):
         if self.collection_worker:
             self.collection_worker.stop()
+            self.log("Stopping...")
 
     def on_collection_finished(self):
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.collection_worker = None
+        self.status_label.setText("Status: Idle")
         self.log("Collection thread exited.")
 
     @pyqtSlot(np.ndarray)
     def update_image(self, cv_img):
-        h, w, ch = cv_img.shape
-        bytes_per_line = ch * w
-        qt_img = QImage(cv_img.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qt_img).scaled(self.image_label.width(), self.image_label.height(), Qt.KeepAspectRatio)
-        self.image_label.setPixmap(pixmap)
+        try:
+            h, w, ch = cv_img.shape
+            bytes_per_line = ch * w
+            qt_img = QImage(cv_img.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            # 保持比例缩放
+            pixmap = QPixmap.fromImage(qt_img).scaled(
+                self.image_label.width(), 
+                self.image_label.height(), 
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.image_label.setPixmap(pixmap)
+        except Exception:
+            pass
 
     # ==========================================
     # Logic: Validation
     # ==========================================
     def browse_validation_folder(self):
-        # 核心修改：添加 options=options 强制使用 Qt 自绘窗口，从而继承黑色主题
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         options |= QFileDialog.ShowDirsOnly
-        
-        d = QFileDialog.getExistingDirectory(
-            self, 
-            "Select JSON Folder", 
-            ".", 
-            options=options
-        )
+        d = QFileDialog.getExistingDirectory(self, "Select JSON Folder", ".", options=options)
         if d:
             self.val_path_input.setText(d)
 
