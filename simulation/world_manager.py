@@ -1,4 +1,7 @@
 #基于 automatic_control.py 的 World 类
+import carla
+import logging
+import time
 class World(object):
     """
     World 类用于统一封装 CARLA 仿真世界的运行环境，主要职责包括：
