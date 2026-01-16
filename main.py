@@ -109,7 +109,7 @@ def main():
     argparser.add_argument('--town', default='Town10HD', help='Map to load')
     argparser.add_argument('--towns', default=None, help='List of towns for multi-map mode')
     argparser.add_argument('--town_mode', default='roundrobin', choices=['roundrobin', 'random'])
-    argparser.add_argument('--seed', default=100, type=int)
+    argparser.add_argument('--seed', default=42, type=int)
     # [新增] 指定特殊-长尾参数，优先级高于 weather_mode
     argparser.add_argument('--sun', default=None, choices=['day', 'night', 'sunset'], help='Specific sun position')
     argparser.add_argument('--weather', default=None, help='Specific weather preset (clear, rain, overcast) or long_tail mode (glare, heavy_fog, storm_aftermath)')
