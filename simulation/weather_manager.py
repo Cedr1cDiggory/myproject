@@ -46,6 +46,8 @@ class WeatherManager(object):
             self.set_preset('sunset', 'clear')
             self.weather.wetness = 80.0
             self.weather.precipitation_deposits = 50.0
+            self.weather.fog_density = random.uniform(5.0, 15.0) # 轻微的雾会让阳光产生体积光(God Rays)
+            self.weather.scattering_intensity = random.uniform(50.0, 100.0) # 增强散射，让画面更“白”
             
         elif mode == 'heavy_fog':
             # 团雾模式
